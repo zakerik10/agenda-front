@@ -40,16 +40,29 @@
         </div>
 
         <div
-          class="col text-center"
-          v-for="(day, j) in weekDays"
+          class="col text-center flex flex-center"
+          v-for="(day, j) in weekDaysWithAppointment"
           :key="j"
           style="border-right: 1px solid #cccc"
         >
           <div v-if="i === 1" class="text-weight-bold q-py-sm">
-            {{ day }}
+            {{ day.dayStr }}
           </div>
 
-          <div v-else class="">Dato</div>
+          <div v-else class="full-width full-height">
+            <div v-for="data in day.data" :key="data" class="full-width full-height">
+              <div
+                v-if="data.hoursOccupieds.includes(column_hours[i - 2])"
+                class="full-width full-height"
+              >
+                <div
+                  :class="data.color"
+                  class="full-width full-height"
+                  style="margin-top: -1px; margin-bottom: -1px"
+                ></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </q-card-section>
@@ -68,22 +81,24 @@ import { ref, computed } from 'vue'
 // const endHour = 20 // Fin a las 20:00
 
 // Datos de prueba (Reemplazar con la llamada a la API)
-// const rawAppointments = ref([
-//   {
-//     id: 1,
-//     timeStart: new Date('2025-12-01T14:00:00'), // Lunes a las 14:00
-//     duration: 30,
-//     clientName: 'Juan Pérez',
-//     color: 'bg-red-6',
-//   },
-//   {
-//     id: 2,
-//     timeStart: new Date('2025-12-03T09:30:00'), // Miércoles a las 9:30
-//     duration: 60,
-//     clientName: 'María Gómez',
-//     color: 'bg-teal-7',
-//   },
-// ])
+const rawAppointments = ref([
+  {
+    id: 1,
+    timeStart: new Date('2025-12-01T14:00:00'), // Lunes a las 14:00
+    duration: 30,
+    clientName: 'Juan Pérez',
+    color: 'bg-red-6',
+    hoursOccupieds: [],
+  },
+  {
+    id: 2,
+    timeStart: new Date('2025-12-03T09:30:00'), // Miércoles a las 9:30
+    duration: 60,
+    clientName: 'María Gómez',
+    color: 'bg-teal-7',
+    hoursOccupieds: [],
+  },
+])
 
 // const columnOfHours = () => {
 //   const slots = []
@@ -98,8 +113,7 @@ import { ref, computed } from 'vue'
 
 const startHourStr = '08:00'
 const endHourStr = '20:30'
-const intervalMinutes = ref(30)
-const weekDays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Vernes', 'Sábado', 'Domingo']
+const intervalMinutes = ref(10)
 
 // Convierte la hora en string a hora de date
 const createDateFromHHMM = (hhmm) => {
@@ -113,6 +127,16 @@ const createDateFromHHMM = (hhmm) => {
   return date
 }
 
+// function HHMMToDate(date) {
+//   const hours = date.getHours()
+//   const minutes = date.getMinutes()
+
+//   const formattedHours = String(hours).padStart(2, '0')
+//   const formattedMinutes = String(minutes).padStart(2, '0')
+
+//   return `${formattedHours}:${formattedMinutes}`
+// }
+
 const columnOfHours = () => {
   const slots = []
 
@@ -120,14 +144,11 @@ const columnOfHours = () => {
   const end = createDateFromHHMM(endHourStr)
 
   const adjustedEnd = new Date(end)
-  console.log('adjustedEnd 1 ' + adjustedEnd)
   adjustedEnd.setMinutes(adjustedEnd.getMinutes() + intervalMinutes.value)
-
-  console.log('adjustedEnd 2 ' + adjustedEnd)
 
   while (current.getTime() < adjustedEnd.getTime()) {
     const h = String(current.getHours()).padStart(2, '0')
-    const m = String(current.getMinutes()).padStart(2, '450')
+    const m = String(current.getMinutes()).padStart(2, '0')
 
     slots.push(`${h}:${m}`)
 
@@ -137,27 +158,106 @@ const columnOfHours = () => {
   return slots
 }
 
-function obtenerSemana(date) {
-  let fecha = new Date(date.getTime())
-  let dia = fecha.getDay()
+function obtenerSemana(dateStr) {
+  let date = new Date(dateStr.getTime())
+  let day = date.getDay()
 
-  if (dia === 0) {
-    fecha.setDate(fecha.getDate() + 1)
+  if (day === 0) {
+    date.setDate(date.getDate() + 1)
   } else {
-    fecha.setDate(fecha.getDate() - (dia - 1))
+    date.setDate(date.getDate() - (dia - 1))
   }
 
-  let semana = []
+  let week = []
   for (let i = 0; i < 7; i++) {
-    let diaActual = new Date(fecha.getTime())
-    diaActual.setDate(fecha.getDate() + i)
-    semana.push(diaActual)
+    let currentDay = new Date(date.getTime())
+    currentDay.setDate(date.getDate() + i)
+    week.push(currentDay)
   }
 
-  return semana
+  return week
 }
+
+// Devuelve una lista ordenada de objetos, donde cada objeto tiene su dia, y una lista data que contiene todos los turnos que sean de ese día
+let orderWithDays = () => {
+  let weekDaysWithAppointment = [
+    {
+      dayStr: 'Lunes',
+      data: [],
+    },
+    {
+      dayStr: 'Martes',
+      data: [],
+    },
+    {
+      dayStr: 'Miércoles',
+      data: [],
+    },
+    {
+      dayStr: 'Jueves',
+      data: [],
+    },
+    {
+      dayStr: 'Viernes',
+      data: [],
+    },
+    {
+      dayStr: 'Sabado',
+      data: [],
+    },
+    {
+      dayStr: 'Domingo',
+      data: [],
+    },
+  ]
+  console.log('RAW APPOINT ' + rawAppointments.value)
+  for (let raw of rawAppointments.value) {
+    console.log('Que poronga es?: ' + raw)
+    console.log('raw timestart: ' + raw.timeStart)
+    console.log('raw timestart getDay: ' + raw.timeStart.getDay())
+    let rawDay = raw.timeStart.getDay()
+    let day = -1
+    if (rawDay == 0) {
+      day = 6
+    } else {
+      day = rawDay - 1
+    }
+    console.log('day: ' + day)
+    weekDaysWithAppointment[day].data.push(raw)
+    console.log('pusheado: ' + weekDaysWithAppointment[day].data)
+    for (let data of weekDaysWithAppointment[day].data) {
+      data.hoursOccupieds = hoursOccupiedInTable(raw.timeStart, raw.duration)
+    }
+    console.log(weekDaysWithAppointment[day].data[0])
+  }
+  console.log('a----------------------------------------------------------------------')
+  console.log('Martes antes return: ' + weekDaysWithAppointment[0].dayStr)
+  console.log('Martes antes return: ' + weekDaysWithAppointment[0].data[0])
+  console.log('-----------------------------------------------------------------------')
+  return weekDaysWithAppointment
+}
+
+function hoursOccupiedInTable(timeStart, duration) {
+  let hoursOccupieds = []
+  let current = timeStart
+  let cellsOccupiedInTable = Math.ceil(duration / intervalMinutes.value)
+
+  for (let i = 0; i < cellsOccupiedInTable; i++) {
+    const h = String(current.getHours()).padStart(2, '0')
+    const m = String(current.getMinutes()).padStart(2, '0')
+
+    hoursOccupieds.push(`${h}:${m}`)
+
+    current.setMinutes(current.getMinutes() + intervalMinutes.value)
+  }
+  console.log('HOURS OCCUPIEDS: ' + hoursOccupieds)
+  return hoursOccupieds
+}
+
 let dia = new Date('12/2/2025')
 console.log('semana del dia ' + dia + ': ' + obtenerSemana(dia))
-const column_hours = computed(columnOfHours)
-console.log(column_hours)
+let column_hours = computed(columnOfHours)
+let weekDaysWithAppointment = computed(orderWithDays)
+console.log('column_hours: ' + column_hours.value)
+console.log('weekDaysWithAppointment: ' + weekDaysWithAppointment.value)
 </script>
