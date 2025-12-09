@@ -242,7 +242,7 @@ $row-height: 40px;
 /* Contenedor que limita la altura y aplica scroll vertical */
 .agenda-body-scroll-container {
   overflow-y: scroll;
-  overflow-x: hidden;
+  overflow-x: scroll;
   min-height: calc($row-height * 2);
 }
 
@@ -260,6 +260,7 @@ $row-height: 40px;
   display: grid;
   grid-template-columns: $col-hora-ancho repeat($num-dias, 1fr);
   width: 100%;
+  border-left: 1px solid #cccc; /* AÑADIDO: El borde izquierdo ahora lo tiene el contenedor de la grilla */
 }
 
 .grid-cell {
@@ -289,12 +290,20 @@ $row-height: 40px;
   justify-content: center;
 }
 
-.grid-cell-hour {
-  border-left: 1px solid #cccc;
-}
+// .grid-cell-hour {
+//   border-left: 1px solid #cccc;
+// }
 
 .header-row .grid-cell {
   border-bottom: 1px solid #cccc;
+  /* Esto hace que la cabecera tenga 100% de ancho + el espacio que ocupa el scroll */
+  // padding-right: 17px; /* 17px es un ancho estándar de scrollbar en muchos navegadores */
+
+  /* Para evitar que el padding rompa el tamaño del contenedor, usamos box-sizing */
+  box-sizing: content-box;
+
+  /* Aseguramos que la cabecera no se encoja verticalmente */
+  flex-shrink: 0;
 }
 
 /* =========================================================
@@ -310,15 +319,34 @@ $row-height: 40px;
   /* CLAVE: Usamos la variable CSS para la altura, menos el alto de la cabecera */
   height: calc(var(--agenda-height) - $row-height);
 
-  left: $col-hora-ancho;
-  width: calc(100% - $col-hora-ancho);
+  // left: $col-hora-ancho;
+  // width: calc(100% - $col-hora-ancho);
+
+  left: 0; /* Asegura que comienza al borde izquierdo */
+  width: 100%; /* Cubre todo el ancho del contenedor .agenda-body */
+
+  /* AÑADIR: La capa de citas ahora usa la misma plantilla de columnas */
+  display: grid;
+  grid-template-columns: $col-hora-ancho repeat($num-dias, 1fr);
+  z-index: 10;
 }
 
+// .days-area-layer {
+//   display: grid;
+//   grid-template-columns: repeat($num-dias, 1fr);
+//   width: 100%;
+//   height: 100%;
+// }
+
 .days-area-layer {
+  /* Ocupa las 7 columnas de los días, dejando la primera columna (la de hora) vacía */
+  grid-column: 2 / span $num-dias;
+  height: 100%;
+  position: relative; /* Es importante para que los .appointment-bar se posicionen dentro */
+
+  /* Y aquí dentro, usamos la misma definición de grid que antes, para posicionar los días */
   display: grid;
   grid-template-columns: repeat($num-dias, 1fr);
-  width: 100%;
-  height: 100%;
 }
 
 .day-column-layer {
