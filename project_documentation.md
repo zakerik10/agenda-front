@@ -39,37 +39,44 @@ El sistema utiliza un modelo de autenticación híbrido para asegurar la identid
 
 - **/boot**: Archivos de inicialización. `axios.js` configura la instancia global de API y los interceptores.
 - **/components**: Componentes Vue reutilizables.
-  - `AbsolutCalendar.vue`: Componente core de la agenda.
+  - `DashboardCalendar.vue`: Componente completo de calendario (FullCalendar).
   - `NabVar.vue`: Barra de navegación y botones de acción.
-- **/layouts**: Plantillas base. `MainLayout.vue` define la estructura (Header + Page Container) y verifica la sesión al montar.
+- **/layouts**: Plantillas base.
+  - `MainLayout.vue`: Layout para el Dashboard. Incluye Drawer lateral con Date Picker y verificador de sesión.
+  - `LandingLayout.vue`: Layout simplificado para la Landing Page (sin drawer).
 - **/pages**: Vistas principales.
   - `LandingPage.vue`: Página de inicio pública con información del producto.
-  - `DashBoard.vue`: Vista privada del dueño (contiene el calendario).
+  - `DashBoard.vue`: Vista privada del dueño. Contiene el componente `DashboardCalendar`.
 - **/stores**: Módulos de estado global (Pinia).
   - `auth.js`: Lógica de usuario y tokens.
+  - `calendar.js`: Estado de navegación de fecha y visibilidad del drawer.
 - **/router**: Configuración de rutas (`routes.js`).
 
 ## 5. Componentes Clave
 
-### AbsolutCalendar.vue
+### DashboardCalendar.vue (FullCalendar)
 
-Es el componente más complejo y central de la aplicación.
+Componente principal que sustituyó al prototipo manual `AbsolutCalendar`.
 
-- **Propósito**: Mostrar la grilla semanal de turnos.
-- **Implementación**:
-  - Usa **CSS Grid** para la estructura base (columnas de días y filas de horas).
-  - Usa **Posicionamiento Absoluto** (`absolute-appointments-layer`) para colocar los bloques de turnos (`appointment-bar`) con precisión de píxeles basada en la hora de inicio y duración.
-- **Estado Actual**:
-  - Fechas y turnos están, por el momento, _hardcodeados_ (variables como `BASE_DATE_STRING` y `rawAppointments`).
-  - Calcula dinámicamente el inicio/fin de semana y alturas de celdas.
+- **Librería**: Utiliza `@fullcalendar/vue3`.
+- **Características**:
+  - Vista semanal (`timeGridWeek`) como predeterminada en escritorio.
+  - Vista diaria (`timeGridDay`) y ajustes simplificados en móviles (Responsivo).
+  - Configuración regional en español (`esLocale`).
+  - **Sincronización**: Escucha cambios en `calendarStore` para navegar a fechas específicas seleccionadas en el Drawer.
+- **Manejo de Datos (Lazy Loading & Caché)**:
+  - **Carga Diferida**: Pide al backend solo los eventos del rango visible (`GET /appointments?start=...&end=...`).
+  - **Caché Temporal**: Implementa un `Map` interno para recordar los rangos de fechas ya visitados y evitar peticiones repetidas durante la sesión.
+  - **Offline/Fallback**: Si la API falla, muestra datos de prueba (`MOCK_EVENTS`) y los cachea para simular funcionamiento offline.
 
-### LandingPage.vue
+### Navegación y Drawer
 
-Página de presentación (Marketing). Muestra "features" del sistema usando un diseño de grid responsive de Quasar.
+- **QDate (MainLayout)**: Selector de fecha en el panel lateral. Configurado con máscara `YYYY-MM-DD` para compatibilidad total con el store y persistencia de mes.
+- **Store (`calendar.js`)**: Actúa como puente. `QDate` escribe en `selectedDate`, y `DashboardCalendar` vigila esa variable para hacer `calendarApi.gotoDate()`.
 
 ## 6. Estado Actual del Desarrollo
 
 - **Autenticación**: ✅ Funcional (Login Google -> Backend JWT -> Refresh Token).
-- **Navegación**: ✅ Básica implementada (Landing <-> Dashboard).
-- **Calendario**: 🚧 En prototipo. Visualmente avanzado pero desconectado del backend (datos mockeados).
-- **API**: Configurada la base y autenticación, falta integración de endpoints de datos de negocio (crear turnos, leer turnos reales).
+- **UI/UX**: ✅ Layouts separados (Landing vs Dashboard). Responsividad móvil implementada.
+- **Calendario**: ✅ Integrado con FullCalendar. Lazy Loading y Caché funcionando.
+- **API (Integración)**: 🚧 Frontend listo para consumir endpoint `/appointments` con filtros de fecha. Backend pendiente de desarrollo (Ver `backend_implementation_guide.md`).

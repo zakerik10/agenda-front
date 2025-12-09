@@ -6,6 +6,7 @@ import {
   createWebHashHistory,
 } from 'vue-router'
 import routes from './routes'
+import { useAuthStore } from 'stores/auth'
 
 /*
  * If not building with SSR mode, you can
@@ -31,6 +32,20 @@ export default defineRouter(function (/* { store, ssrContext } */) {
     // quasar.conf.js -> build -> vueRouterMode
     // quasar.conf.js -> build -> publicPath
     history: createHistory(process.env.VUE_ROUTER_BASE),
+  })
+
+  Router.beforeEach((to, from, next) => {
+    // Importamos dinámicamente o usamos el store aquí
+    // Nota: en Quasar boot files, el router se inicializa antes que algunos componentes,
+    // pero dentro del beforeEach ya tenemos acceso a Pinia instanciado.
+    // const { useAuthStore } = require('stores/auth')
+    const authStore = useAuthStore()
+
+    if (to.matched.some((record) => record.meta.requiresAuth) && !authStore.isLoggedIn) {
+      next({ path: '/' })
+    } else {
+      next()
+    }
   })
 
   return Router

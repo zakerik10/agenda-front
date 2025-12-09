@@ -15,6 +15,12 @@
     "postinstall": "quasar prepare"
   },
   "dependencies": {
+    "@fullcalendar/core": "^6.1.19",
+    "@fullcalendar/daygrid": "^6.1.19",
+    "@fullcalendar/interaction": "^6.1.19",
+    "@fullcalendar/list": "^6.1.19",
+    "@fullcalendar/timegrid": "^6.1.19",
+    "@fullcalendar/vue3": "^6.1.19",
     "@quasar/extras": "^1.16.4",
     "axios": "^1.2.1",
     "firebase": "^12.6.0",

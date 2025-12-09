@@ -1,12 +1,12 @@
 <template>
   <q-page>
-    <AbsolutCalendar />
+    <DashboardCalendar />
   </q-page>
 </template>
 
 <script setup>
-// import CalendarComp from 'src/components/CalendarComp.vue'
-import AbsolutCalendar from 'src/components/AbsolutCalendar.vue'
+// import AbsolutCalendar from 'src/components/AbsolutCalendar.vue' // Deprecated
+import DashboardCalendar from 'src/components/DashboardCalendar.vue'
 </script>
 
 <style scoped></style>
