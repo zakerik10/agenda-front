@@ -2,6 +2,8 @@ import { defineStore, acceptHMRUpdate } from 'pinia'
 import { GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth'
 import { auth } from '../firebase.js'
 import { api } from 'boot/axios'
+import { Notify } from 'quasar'
+import { useBranchStore } from './branch'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -10,38 +12,34 @@ export const useAuthStore = defineStore('auth', {
     refreshToken: localStorage.getItem('refresh_token') || null,
     isLoggedIn: !!localStorage.getItem('access_token'),
   }),
-
-  getters: {
-    getUser: (state) => state.user,
-    getAccessToken: (state) => state.accessToken,
-    getIsAuthenticated: (state) => state.isLoggedIn,
-  },
+  // ... getters ...
 
   actions: {
     async accessGoogle() {
-      console.log('Login')
+      console.log('Iniciando proceso de Login...')
       const provider = new GoogleAuthProvider()
+      const branchStore = useBranchStore()
+
       try {
+        // 1. Autenticación con Firebase (Google)
         const result = await signInWithPopup(auth, provider)
         const user = result.user
         const idToken = await user.getIdToken()
 
+        console.log('Firebase Login Exitoso. Token obtenido.')
+
+        // 2. Autenticación con Backend (Flask)
+        console.log('Contactando servidor backend para validar sesión...')
         const response = await this._googleAuthFlask(idToken)
+
         const accessToken = response.access_token
         const refreshToken = response.refresh_token
 
         localStorage.setItem('access_token', accessToken)
         localStorage.setItem('refresh_token', refreshToken)
 
-        console.log(
-          'Vemos lo que se guarda en la localStorage refreshToken: ' +
-            localStorage.getItem('refresh_token'),
-        )
-
-        console.log(
-          'Vemos lo que se guarda en la localStorage accessToken: ' +
-            localStorage.getItem('access_token'),
-        )
+        // 3. Cargar Sucursales
+        await branchStore.fetchBranches()
 
         this.$patch({
           user: user,
@@ -50,19 +48,56 @@ export const useAuthStore = defineStore('auth', {
           isLoggedIn: true,
         })
 
-        console.log(this.accessToken)
+        console.log('Login completado exitosamente.')
+        Notify.create({
+          type: 'positive',
+          message: `Bienvenido, ${user.displayName || 'Usuario'}`,
+          position: 'top',
+        })
       } catch (error) {
-        const errorCode = error.code
-        const errorMessage = error.message
+        console.group('Error en Autenticación')
+        console.error('Objeto de error completo:', error)
 
-        const email = error.customData ? error.customData.email : 'N/A'
-
-        console.log(errorCode)
-        console.log(errorMessage)
-        console.log(email)
-
+        // Limpieza de estado
         this.isLoggedIn = false
         this.user = null
+
+        let userMessage = 'No se pudo iniciar sesión. Intente nuevamente.'
+        let technicalDetails = error.message
+
+        // Detección de tipos de error para mensaje Usuario (Genérico)
+        if (error.code === 'auth/popup-closed-by-user') {
+          userMessage = 'Inicio de sesión cancelado.'
+          console.warn('Usuario cerró el popup de Google.')
+        } else if (error.code === 'auth/popup-blocked') {
+          userMessage = 'Navegador bloqueó la ventana emergente. Por favor permítala.'
+        } else if (
+          error.code === 'auth/network-request-failed' ||
+          error.message === 'Network Error' ||
+          error.code === 'ERR_NETWORK'
+        ) {
+          // Fallas de conexión (Google o Backend caído)
+          userMessage = 'Problema de conexión. Verifique su internet o intente más tarde.'
+          console.error('Network/Backend Error:', error.message)
+        } else {
+          // Cualquier otro error (Backend 4xx/5xx, errores internos)
+          userMessage = 'Ocurrió un error al iniciar sesión. Intente nuevamente más tarde.'
+          if (error.response) {
+            console.error('Backend Response Error:', error.response.data)
+            technicalDetails = `Status: ${error.response.status}`
+          }
+        }
+
+        // Notificación visual al usuario
+        Notify.create({
+          type: 'negative',
+          message: userMessage,
+          position: 'top',
+          timeout: 5000,
+        })
+
+        console.error('Detalles Técnicos para Debug:', technicalDetails)
+        console.groupEnd()
       }
     },
 
@@ -98,6 +133,10 @@ export const useAuthStore = defineStore('auth', {
           isLoggedIn: true,
         })
         console.log('Sesión restaurada y perfil cargado:', response.data)
+
+        // Cargar sucursales al restaurar
+        const branchStore = useBranchStore()
+        await branchStore.fetchBranches()
       } catch (error) {
         // Si Flask responde con 401 (JWT inválido o expirado)
         console.error('Error al verificar sesión (401/403). Cerrando sesión.', error)
@@ -136,7 +175,10 @@ export const useAuthStore = defineStore('auth', {
         })
         localStorage.removeItem('access_token')
         localStorage.removeItem('refresh_token')
-        console.log('Se cerró sesión')
+        // Limpiar Mock DB local
+        localStorage.removeItem('mock_branches_db')
+
+        console.log('Se cerró sesión y se limpiaron datos locales.')
       } catch (error) {
         console.log(error)
       }

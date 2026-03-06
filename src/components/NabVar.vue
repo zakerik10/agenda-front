@@ -13,6 +13,8 @@
 
       <q-toolbar-title> Quasar App </q-toolbar-title>
 
+      <BranchSelector v-if="isLoggedIn" />
+
       <q-btn color="secondary" label="Ingresar" v-if="!isLoggedIn" @click="handleLogin()" />
       <q-btn color="secondary" label="Salir" v-if="isLoggedIn" @click="authStore.logoutGoogle()" />
     </q-toolbar>
@@ -22,8 +24,10 @@
 <script setup>
 // import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from 'src/stores/auth'
 import { useCalendarStore } from 'stores/calendar'
+import BranchSelector from 'components/BranchSelector.vue'
 
 defineProps({
   showMenuButton: {
@@ -38,8 +42,12 @@ const calendarStore = useCalendarStore()
 // const leftDrawerOpen = ref(false)
 
 const { isLoggedIn } = storeToRefs(authStore)
+const router = useRouter()
 
-function handleLogin() {
-  authStore.accessGoogle() // Llama a la Action
+async function handleLogin() {
+  await authStore.accessGoogle()
+  if (authStore.isLoggedIn) {
+    router.push('/dashboard')
+  }
 }
 </script>

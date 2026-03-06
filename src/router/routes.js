@@ -15,6 +15,17 @@ const routes = [
       },
     ],
   },
+  {
+    path: '/onboarding',
+    component: () => import('layouts/LandingLayout.vue'),
+    children: [
+      {
+        path: '',
+        component: () => import('pages/OnboardingPage.vue'),
+      },
+    ],
+    meta: { requiresAuth: true },
+  },
 
   // Always leave this as last one,
   // but you can also remove it

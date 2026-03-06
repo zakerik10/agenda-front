@@ -14,9 +14,22 @@ import interactionPlugin from '@fullcalendar/interaction'
 import listPlugin from '@fullcalendar/list'
 import esLocale from '@fullcalendar/core/locales/es'
 import { useCalendarStore } from 'stores/calendar'
+import { useBranchStore } from 'stores/branch'
 import { api } from 'boot/axios'
 
+const props = defineProps({
+  editable: {
+    type: Boolean,
+    default: true,
+  },
+  selectable: {
+    type: Boolean,
+    default: true,
+  },
+})
+
 const calendarStore = useCalendarStore()
+const branchStore = useBranchStore()
 const fullCalendarRef = ref(null)
 const $q = useQuasar()
 
@@ -78,8 +91,8 @@ const calendarOptions = computed(() => {
     slotMinTime: '08:00:00',
     slotMaxTime: '22:00:00',
     allDaySlot: true,
-    editable: false,
-    selectable: true,
+    editable: props.editable,
+    selectable: props.selectable,
     selectMirror: true,
     dayMaxEvents: true,
     weekends: true,
@@ -100,20 +113,29 @@ const calendarOptions = computed(() => {
 async function fetchEvents(fetchInfo, successCallback, failureCallback) {
   const startStr = fetchInfo.startStr.split('T')[0]
   const endStr = fetchInfo.endStr.split('T')[0]
-  const cacheKey = `${startStr}_${endStr}`
+
+  const branchId = branchStore.currentBranch?.id_business
+  if (!branchId) {
+    successCallback([])
+    return
+  }
+
+  const cacheKey = `${branchId}_${startStr}_${endStr}`
 
   // 1. Verificar Caché REAL
   if (eventsCache.has(cacheKey)) {
-    console.log(`[Cache Hit] Rango ${cacheKey} recuperado de memoria. Sin petición al Backend.`)
+    console.log(`[Cache Hit] Rango ${cacheKey} recuperado de memoria.`)
     const cachedEvents = eventsCache.get(cacheKey)
     successCallback(cachedEvents)
-    return // ¡Detenemos la ejecución aquí!
+    return
   }
 
-  console.log(`[Cache Miss] Solicitando eventos para rango: ${startStr} a ${endStr}`)
+  console.log(
+    `[Cache Miss] Solicitando eventos para Branch ${branchId} - rango: ${startStr} a ${endStr}`,
+  )
 
   try {
-    const params = { start: startStr, end: endStr }
+    const params = { start: startStr, end: endStr, branch_id: branchId }
     console.log('GET /appointments', params)
     const response = await api.get('/appointments', { params })
 
@@ -123,16 +145,24 @@ async function fetchEvents(fetchInfo, successCallback, failureCallback) {
 
     successCallback(events)
   } catch (error) {
-    console.warn('Backend falló. Usando Mock Data y guardando en caché temporal.', error)
-
-    // Para cumplir tu requisito de "no volver a pedir", guardamos también el Mock en caché
-    // Así la próxima vez que visites este mes, devolverá el Mock directamente sin intentar GET.
+    console.warn('Backend falló. Usando Mock Data.', error)
     eventsCache.set(cacheKey, MOCK_EVENTS)
     successCallback(MOCK_EVENTS)
 
     if (failureCallback) failureCallback(error)
   }
 }
+
+// Recargar eventos cuando cambia la sucursal
+watch(
+  () => branchStore.currentBranch,
+  async (newBranch) => {
+    if (newBranch && fullCalendarRef.value) {
+      console.log('Sucursal cambiada. Recargando eventos con nuevo ID...')
+      fullCalendarRef.value.getApi().refetchEvents()
+    }
+  },
+)
 
 // Sincronización: Cuando cambiamos fecha en el Drawer (Store), movemos el calendario
 watch(

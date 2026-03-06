@@ -32,14 +32,25 @@ import { onMounted } from 'vue'
 import { useAuthStore } from 'stores/auth'
 import { useCalendarStore } from 'stores/calendar'
 
+import { useRouter } from 'vue-router'
+import { useBranchStore } from 'stores/branch'
+
 const authStore = useAuthStore()
 const calendarStore = useCalendarStore()
+const branchStore = useBranchStore()
+const router = useRouter()
 
 onMounted(async () => {
   // Ejecutar la verificación de sesión al montar el layout
   console.log('MainLayout montado, verificando sesión...')
   try {
     await authStore.checkAuthAndLoadUser()
+
+    // Verificar si tiene sucursales
+    if (authStore.isLoggedIn && !branchStore.hasBranches) {
+      console.log('Usuario sin sucursales. Redirigiendo a Onboarding.')
+      router.push('/onboarding')
+    }
   } catch (error) {
     // La Store ya maneja la limpieza si el token es inválido (401)
     console.log('Sesión no válida o expirada. El usuario está deslogueado. error: ' + error)
