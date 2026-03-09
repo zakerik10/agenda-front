@@ -38,15 +38,15 @@ export const useAuthStore = defineStore('auth', {
         localStorage.setItem('access_token', accessToken)
         localStorage.setItem('refresh_token', refreshToken)
 
-        // 3. Cargar Sucursales
-        await branchStore.fetchBranches()
-
         this.$patch({
           user: user,
-          accessToken: idToken,
+          accessToken: accessToken,
           refreshToken: refreshToken,
           isLoggedIn: true,
         })
+
+        // 3. Cargar Sucursales
+        await branchStore.fetchBranches()
 
         console.log('Login completado exitosamente.')
         Notify.create({
@@ -148,6 +148,11 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async checkAuthAndLoadUser() {
+      // Si el perfil ya está cargado en memoria, no volver a pedirlo
+      if (this.user) {
+        return
+      }
+
       // Intenta cargar el token si no está en el state (por si acaso)
       if (!this.accessToken) {
         const storedToken = localStorage.getItem('access_token')
