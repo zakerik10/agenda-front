@@ -10,11 +10,11 @@
       <q-list>
         <q-item
           v-for="branch in branchStore.branches"
-          :key="branch.id_business"
+          :key="branch.id_branch"
           clickable
           v-close-popup
-          @click="selectBranch(branch.id_business)"
-          :active="branch.id_business === branchStore.currentBranch?.id_business"
+          @click="selectBranch(branch.id_branch)"
+          :active="branch.id_branch === branchStore.currentBranch?.id_branch"
         >
           <q-item-section>
             <q-item-label>{{ branch.name }}</q-item-label>

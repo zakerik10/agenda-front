@@ -21,7 +21,7 @@ export const useBranchStore = defineStore('branch', {
       try {
         console.log('Fetching branches...')
         // TODO: Implementar GET /branches en Flask
-        const response = await api.get('/branches')
+        const response = await api.get('/branches/')
         this.branches = response.data
 
         // Seleccionar automáticamente la primera si no hay ninguna seleccionada
@@ -55,12 +55,17 @@ export const useBranchStore = defineStore('branch', {
       this.loading = true
       try {
         // TODO: Implementar POST /branches en Flask
-        const response = await api.post('/branches', branchData)
+        const response = await api.post('/branches/', branchData)
 
         // Agregar la nueva sucursal al state
         const newBranch = response.data
-        this.branches.push(newBranch)
-        this.currentBranch = newBranch // Seleccionarla
+        if (newBranch && typeof newBranch === 'object') {
+          this.branches.push(newBranch)
+          this.currentBranch = newBranch // Seleccionarla
+        } else {
+          // Si por alguna razón no es el objeto esperado, re-fetch para sincronizar
+          await this.fetchBranches()
+        }
 
         return newBranch
       } catch (error) {
@@ -68,7 +73,7 @@ export const useBranchStore = defineStore('branch', {
 
         // SIMULACIÓN DE EXITO
         const newMockBranch = {
-          id_business: Date.now(),
+          id_branch: Date.now(),
           name: branchData.name,
           address: branchData.address,
           id_owner: 1,
@@ -88,7 +93,7 @@ export const useBranchStore = defineStore('branch', {
     },
 
     setCurrentBranch(branchId) {
-      const branch = this.branches.find((b) => b.id_business === branchId)
+      const branch = this.branches.find((b) => b.id_branch === branchId)
       if (branch) {
         this.currentBranch = branch
       }

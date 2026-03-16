@@ -67,7 +67,7 @@ onMounted(async () => {
 
     // Si ya tiene sucursales, no debería estar aquí
     if (branchStore.hasBranches) {
-      router.push('/dashboard')
+      //router.push('/dashboard')
     }
   } catch (e) {
     console.log('Error verificando sesión en onboarding', e)

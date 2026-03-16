@@ -15,7 +15,7 @@ import listPlugin from '@fullcalendar/list'
 import esLocale from '@fullcalendar/core/locales/es'
 import { useCalendarStore } from 'stores/calendar'
 import { useBranchStore } from 'stores/branch'
-import { api } from 'boot/axios'
+// import { api } from 'boot/axios'
 
 const props = defineProps({
   editable: {
@@ -37,37 +37,11 @@ const $q = useQuasar()
 const eventsCache = new Map()
 
 // Re-defining MOCK_EVENTS to ensure validity in replacement
+/**
 const MOCK_EVENTS = [
-  {
-    id: 'mock-1',
-    title: 'Corte de Pelo - Juan Perez (Mock)',
-    start: new Date().setHours(10, 0, 0),
-    end: new Date().setHours(11, 0, 0),
-    color: '#1976D2',
-  },
-  {
-    id: 'mock-2',
-    title: 'Tinte - Maria Garcia (Mock)',
-    start: new Date().setHours(14, 0, 0),
-    end: new Date().setHours(16, 30, 0),
-    color: '#9C27B0',
-  },
-  {
-    id: 'mock-3',
-    title: 'Manicura (Mock)',
-    start: new Date(new Date().setDate(new Date().getDate() + 1)).setHours(9, 0, 0),
-    end: new Date(new Date().setDate(new Date().getDate() + 1)).setHours(10, 0, 0),
-    color: '#E91E63',
-  },
-  {
-    id: 'mock-4',
-    title: 'Feriado / Cerrado',
-    start: new Date().toISOString().split('T')[0],
-    allDay: true,
-    color: '#FF9800',
-    display: 'background',
-  },
+  ...
 ]
+*/
 
 // Computed para ajustar configuración según pantalla
 const calendarOptions = computed(() => {
@@ -110,45 +84,35 @@ const calendarOptions = computed(() => {
   }
 })
 
-async function fetchEvents(fetchInfo, successCallback, failureCallback) {
-  const startStr = fetchInfo.startStr.split('T')[0]
-  const endStr = fetchInfo.endStr.split('T')[0]
+import calendarService from 'src/api/calendarService'
 
-  const branchId = branchStore.currentBranch?.id_business
+// ... (dentro de script setup)
+
+async function fetchEvents(fetchInfo, successCallback, failureCallback) {
+  const branchId = branchStore.currentBranch?.id_branch
   if (!branchId) {
     successCallback([])
     return
   }
 
+  const startStr = fetchInfo.startStr.split('T')[0]
+  const endStr = fetchInfo.endStr.split('T')[0]
   const cacheKey = `${branchId}_${startStr}_${endStr}`
 
-  // 1. Verificar Caché REAL
   if (eventsCache.has(cacheKey)) {
-    console.log(`[Cache Hit] Rango ${cacheKey} recuperado de memoria.`)
-    const cachedEvents = eventsCache.get(cacheKey)
-    successCallback(cachedEvents)
+    successCallback(eventsCache.get(cacheKey))
     return
   }
 
-  console.log(
-    `[Cache Miss] Solicitando eventos para Branch ${branchId} - rango: ${startStr} a ${endStr}`,
-  )
-
   try {
-    const params = { start: startStr, end: endStr, branch_id: branchId }
-    console.log('GET /appointments', params)
-    const response = await api.get('/appointments', { params })
-
-    // Guardar en caché antes de devolver
-    const events = response.data
+    // Usamos el servicio que centraliza la lógica de "Primero el Backend"
+    const events = await calendarService.getEventsByBranch(branchId)
+    
     eventsCache.set(cacheKey, events)
-
     successCallback(events)
   } catch (error) {
-    console.warn('Backend falló. Usando Mock Data.', error)
-    eventsCache.set(cacheKey, MOCK_EVENTS)
-    successCallback(MOCK_EVENTS)
-
+    console.error('Error fetching events:', error)
+    successCallback([]) // O podrías usar MOCK_EVENTS como fallback
     if (failureCallback) failureCallback(error)
   }
 }

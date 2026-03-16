@@ -54,28 +54,41 @@ Basado en tu diagrama ERD, esta es la estructura relacional firme.
 
 1.  **Owner**: Dueño de la cuenta (SaaS).
 2.  **Businesses (Sucursales)**:
-    - `id_business` (PK)
-    - `id_owner` (FK) -> Un dueño tiene N sucursales.
-    - `name`, `address`.
-3.  **Employees (Empleados)**:
+    - `id_branch` (PK)
+    - `id_owner` (FK)
+    - `name` (string)
+    - `address` (string)
+    - `email` (string) U
+    - `phone` (string)
+
+- **Employees**
     - `id_employee` (PK)
-    - `id_business` (FK) -> Un empleado pertenece a una oficina específica.
-    - `name`, `surename`, `mail`.
-4.  **Services (Catálogo Global)**:
-    - `id_service` (PK)
-    - `id_owner` (FK) -> El catálogo es global para el dueño (ej: "Corte" es el mismo item conceptual).
-    - `name`, `price`, `duration`.
-5.  **Services_offered (Disponibilidad)**:
-    - _Solución a tu duda_: Esta tabla intermedia es perfecta.
+    - `id_branch` (FK) -> Un empleado pertenece a una oficina específica.
+    - `name` (string)
+    - `surename` (string)
+    - `mail` (string) U
+    - `phone` (string)
+
+- **Services**
+    - `id_services` (PK)
+    - `id_owner` (FK)
+    - `name` (string)
+    - `description` (string)
+    - `price` (int)
+    - `duration` (int)
+
+- **Clients**
+    - `id_client` (PK)
+    - `id_branch` (FK) -> Los clientes pertenecen a la sucursal.
+    - `name` (string)
+    - `surename` (string)
+    - `email` (string) U
+    - `phone` (string)
+
+- **Appointments**
+    - `id_apointment` (PK)
     - `id_service` (FK)
     - `id_employee` (FK)
-    - **Lógica**: Si en la Sucursal A solo trabaja el Empleado 1, y ese empleado NO tiene link en esta tabla con el servicio "Color", entonces la Sucursal A no ofrece Color.
-6.  **Clients**:
-    - `id_client` (PK)
-    - `id_business` (FK) -> Los clientes pertenecen a la sucursal.
-7.  **Appointments (Turnos)**:
-    - `id_appointment` (PK)
-    - `id_business` (FK)
     - `id_employee` (FK) -> **Importante**: Saber QUIÉN atiende.
     - `id_service` (FK) -> Saber QUÉ se hace.
     - `id_client` (FK) -> **AGREGAR (Faltaba en diagrama)**: Saber QUIÉN viene.
