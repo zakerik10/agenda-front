@@ -18,7 +18,6 @@ export const useAuthStore = defineStore('auth', {
     async accessGoogle() {
       console.log('Iniciando proceso de Login...')
       const provider = new GoogleAuthProvider()
-      const branchStore = useBranchStore()
 
       try {
         // 1. Autenticación con Firebase (Google)
@@ -45,8 +44,8 @@ export const useAuthStore = defineStore('auth', {
           isLoggedIn: true,
         })
 
-        // 3. Cargar Sucursales
-        await branchStore.fetchBranches()
+        // 3. Cargar perfil del usuario y sucursales
+        await this.fetchUserProfile()
 
         console.log('Login completado exitosamente.')
         Notify.create({
@@ -98,6 +97,46 @@ export const useAuthStore = defineStore('auth', {
 
         console.error('Detalles Técnicos para Debug:', technicalDetails)
         console.groupEnd()
+      }
+    },
+    async loginStaff(username, password) {
+      console.log('Iniciando Login de Staff...')
+      const branchStore = useBranchStore()
+      try {
+        const response = await api.post('/employees/login', {
+          username: username,
+          password: password
+        }, { skipAuth: true })
+
+        const { access_token, refresh_token } = response.data
+
+        localStorage.setItem('access_token', access_token)
+        localStorage.setItem('refresh_token', refresh_token)
+
+        this.$patch({
+          accessToken: access_token,
+          refreshToken: refresh_token,
+          isLoggedIn: true
+        })
+
+        // Obtener perfil y sucursales
+        await this.fetchUserProfile()
+        await branchStore.fetchBranches()
+
+        Notify.create({
+          type: 'positive',
+          message: 'Ingreso exitoso como staff',
+          position: 'top'
+        })
+        return true
+      } catch (error) {
+        console.error('Error en Login Staff:', error)
+        Notify.create({
+          type: 'negative',
+          message: error.response?.data?.message || 'Error al iniciar sesión',
+          position: 'top'
+        })
+        return false
       }
     },
 
@@ -187,6 +226,37 @@ export const useAuthStore = defineStore('auth', {
       } catch (error) {
         console.log(error)
       }
+    },
+
+    /**
+     * Determina a qué ruta redirigir al usuario después del login.
+     * Prioridad:
+     *  1. Empleado con contraseña temporal → /change-password
+     *  2. Dueño sin nombre de marca → /setup-brand
+     *  3. Dueño sin sucursales → /onboarding
+     *  4. Todo completo → /dashboard
+     */
+    getPostLoginRoute() {
+      const user = this.user
+      if (!user) return '/login'
+
+      // Empleado con contraseña por cambiar
+      if (user.role === 'employee' && !user.password_changed) {
+        return '/change-password'
+      }
+
+      // Dueño sin marca configurada
+      if (user.role !== 'employee' && !user.brand_name) {
+        return '/setup-brand'
+      }
+
+      // Dueño sin sucursales
+      const branchStore = useBranchStore()
+      if (user.role !== 'employee' && (!branchStore.branches || branchStore.branches.length === 0)) {
+        return '/onboarding'
+      }
+
+      return '/dashboard'
     },
   },
 })

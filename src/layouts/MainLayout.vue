@@ -1,26 +1,61 @@
 <template>
-  <q-layout view="hHh lpR fFf">
+  <q-layout view="hHh lpR fFf" class="bg-grey-1">
     <NabVar />
 
-    <q-drawer v-model="calendarStore.isDrawerOpen" side="left" bordered>
-      <div class="q-pa-md row justify-center">
+    <q-drawer
+      v-model="calendarStore.isDrawerOpen"
+      side="left"
+      bordered
+      :width="300"
+      class="bg-white scroll-none"
+    >
+      <div class="q-pa-sm">
+        <div class="text-subtitle1 text-bold q-mb-md text-secondary">Navegación</div>
+        <q-list padding class="rounded-borders">
+          <q-item clickable v-ripple @click="router.push('/dashboard/agenda')">
+            <q-item-section avatar>
+              <q-icon name="mdi-calendar" color="primary" />
+            </q-item-section>
+            <q-item-section>Agenda</q-item-section>
+          </q-item>
+
+          <q-item clickable v-ripple @click="router.push('/dashboard/servicios')">
+            <q-item-section avatar>
+              <q-icon name="mdi-hammer-wrench" color="primary" />
+            </q-item-section>
+            <q-item-section>Servicios</q-item-section>
+          </q-item>
+
+          <q-item clickable v-ripple @click="router.push('/dashboard/equipo')">
+            <q-item-section avatar>
+              <q-icon name="mdi-account-group" color="primary" />
+            </q-item-section>
+            <q-item-section>Equipo</q-item-section>
+          </q-item>
+
+          <q-item clickable v-ripple @click="router.push('/dashboard/sucursales')">
+            <q-item-section avatar>
+              <q-icon name="mdi-store" color="primary" />
+            </q-item-section>
+            <q-item-section>Sucursales</q-item-section>
+          </q-item>
+        </q-list>
+
+        <q-separator class="q-my-md" />
+
+        <div class="text-subtitle1 text-bold q-mb-md text-secondary">Ir a Fecha</div>
         <q-date
-          v-model="calendarStore.selectedDate"
+          v-model="selectedDate"
           minimal
-          today-btn
+          flat
           mask="YYYY-MM-DD"
-          @update:model-value="calendarStore.updateDate"
+          class="full-width q-date-premium"
+          @update:model-value="onDateChange"
         />
-      </div>
-      <div class="q-pa-md">
-        <div class="text-subtitle2 q-mb-sm">Navegación</div>
-        <p class="text-caption text-grey">
-          Selecciona una fecha para mover el calendario principal.
-        </p>
       </div>
     </q-drawer>
 
-    <q-page-container>
+    <q-page-container style="padding-left: 0; padding-right: 0;">
       <router-view />
     </q-page-container>
   </q-layout>
@@ -28,32 +63,42 @@
 
 <script setup>
 import NabVar from 'src/components/NabVar.vue'
-import { onMounted } from 'vue'
+import { onMounted, computed } from 'vue'
 import { useAuthStore } from 'stores/auth'
+import { useRouter } from 'vue-router'
+//import { useBranchStore } from 'stores/branch'
 import { useCalendarStore } from 'stores/calendar'
 
-import { useRouter } from 'vue-router'
-import { useBranchStore } from 'stores/branch'
-
 const authStore = useAuthStore()
+//const branchStore = useBranchStore()
 const calendarStore = useCalendarStore()
-const branchStore = useBranchStore()
 const router = useRouter()
 
+const selectedDate = computed({
+  get: () => calendarStore.selectedDate,
+  set: (val) => calendarStore.updateDate(val)
+})
+
+const onDateChange = (val) => {
+  if (val) {
+    calendarStore.updateDate(val)
+  }
+}
+
 onMounted(async () => {
-  // Ejecutar la verificación de sesión al montar el layout
   console.log('MainLayout montado, verificando sesión...')
   try {
     await authStore.checkAuthAndLoadUser()
 
-    // Verificar si tiene sucursales
-    if (authStore.isLoggedIn && !branchStore.hasBranches) {
-      console.log('Usuario sin sucursales. Redirigiendo a Onboarding.')
-      router.push('/onboarding')
+    // Redirigir si el usuario necesita completar algún paso antes del dashboard
+    if (authStore.isLoggedIn) {
+      const targetRoute = authStore.getPostLoginRoute()
+      if (targetRoute !== '/dashboard') {
+        router.push(targetRoute)
+      }
     }
   } catch (error) {
-    // La Store ya maneja la limpieza si el token es inválido (401)
-    console.log('Sesión no válida o expirada. El usuario está deslogueado. error: ' + error)
+    console.log('Sesión no válida o expirada. error: ' + error)
   }
 })
 </script>
