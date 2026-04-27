@@ -258,6 +258,21 @@ export const useAuthStore = defineStore('auth', {
 
       return '/dashboard'
     },
+
+    /**
+     * Verifica si el usuario tiene un permiso específico.
+     * El dueño original siempre tiene todos los permisos.
+     */
+    hasPermission(permissionCode) {
+      if (!this.isLoggedIn || !this.user) return false
+      
+      // El dueño tiene poder absoluto
+      if (this.user.role === 'owner' || this.user.is_owner) return true
+      
+      // Si es empleado, verificar su lista de permisos
+      const userPermissions = this.user.permissions || []
+      return userPermissions.includes(permissionCode)
+    }
   },
 })
 

@@ -9,14 +9,17 @@ export const useEmployeeStore = defineStore('employee', {
     loading: false,
   }),
   actions: {
-    async fetchEmployees() {
-      const branchStore = useBranchStore()
-      if (!branchStore.currentBranch) return
-
+    async fetchEmployees(all = false) {
       this.loading = true
       try {
-        const response = await api.get(`/employees/branch/${branchStore.currentBranch.id_branch}`)
-        // Note: Assuming a route /employees/branch/<id> exists or updating backend accordingly
+        let url = '/employees/'
+        if (!all) {
+          const branchStore = useBranchStore()
+          if (!branchStore.currentBranch) return
+          url = `/employees/branch/${branchStore.currentBranch.id_branch}`
+        }
+        
+        const response = await api.get(url)
         this.employees = response.data
       } catch (error) {
         console.error('Error fetching employees:', error)
@@ -26,23 +29,38 @@ export const useEmployeeStore = defineStore('employee', {
     },
 
     async createEmployee(employeeData) {
-      const branchStore = useBranchStore()
-      if (!branchStore.currentBranch) return
-
+      this.loading = true
       try {
-        const response = await api.post(`/employees/register/${branchStore.currentBranch.id_branch}`, employeeData)
+        const response = await api.post('/employees/register', employeeData)
         
         // El backend devuelve { message, username, password }
-        // Añadimos el nuevo empleado a la lista (sin la clave, solo para visualización)
         await this.fetchEmployees()
         
-        return response.data // Retornamos para mostrar la contraseña al dueño
+        return response.data 
       } catch (error) {
         Notify.create({
           type: 'negative',
           message: error.response?.data?.message || 'Error al crear empleado'
         })
         return null
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async registerOwner(idBranch) {
+      this.loading = true
+      try {
+        await api.post(`/employees/register-owner/${idBranch}`)
+        Notify.create({ type: 'positive', message: '¡Ya sos parte del equipo de esta sucursal!' })
+        await this.fetchEmployees()
+        return true
+      } catch (error) {
+        console.error('Error registering owner as staff:', error)
+        Notify.create({ type: 'negative', message: error.response?.data?.message || 'Error al registrarte como staff' })
+        return false
+      } finally {
+        this.loading = false
       }
     }
   }

@@ -5,15 +5,39 @@
         <q-icon name="mdi-account-group" size="32px" color="primary" class="q-mr-sm" />
         <h1 class="text-h4 text-bold text-secondary q-my-none">Gestión de Equipo</h1>
       </div>
-      <q-btn
-        unelevated
-        color="primary"
-        label="Añadir Miembro"
-        icon="add"
-        rounded
-        padding="10px 20px"
-        @click="showAddDialog = true"
-      />
+      <div class="row q-gutter-sm items-center">
+        <q-toggle
+          v-if="authStore.hasPermission('staff.view_all')"
+          v-model="viewAll"
+          label="Ver todo el personal"
+          color="secondary"
+          @update:model-value="toggleViewAll"
+          class="q-mr-md"
+        />
+        <q-btn
+          v-if="!isOwnerRegistered"
+          outline
+          color="secondary"
+          label="Trabajo en esta sucursal"
+          icon="mdi-account-plus"
+          rounded
+          padding="10px 20px"
+          :loading="employeeStore.loading"
+          @click="addOwnerAsStaff"
+        >
+          <q-tooltip>Crea tu perfil de prestador para recibir turnos</q-tooltip>
+        </q-btn>
+        <q-btn
+          v-if="authStore.hasPermission('staff.manage')"
+          unelevated
+          color="primary"
+          label="Añadir Miembro"
+          icon="add"
+          rounded
+          padding="10px 20px"
+          @click="showAddDialog = true"
+        />
+      </div>
     </div>
 
     <!-- Tabla de Staff -->
@@ -23,22 +47,29 @@
         :columns="columns"
         row-key="id_employee"
         flat
+        class="bg-transparent"
         :loading="employeeStore.loading"
         no-data-label="No hay miembros en el equipo todavía"
       >
-        <template v-slot:body-cell-role="props">
+        <template v-slot:body-cell-role_name="props">
           <q-td :props="props">
-            <q-chip
-              :color="props.value === 'admin' ? 'secondary' : 'primary'"
-              text-color="white"
-              size="sm"
-              dense
-            >
-              {{ props.value.toUpperCase() }}
+            <q-chip outline color="primary" size="sm" class="text-bold">
+              {{ props.value }}
             </q-chip>
           </q-td>
         </template>
-        
+
+        <template v-slot:body-cell-branches="props">
+          <q-td :props="props">
+            <div v-if="props.row.accessible_branches && props.row.accessible_branches.length > 0" class="row q-gutter-xs justify-center">
+              <q-chip v-for="b in props.row.accessible_branches" :key="b.id_branch" size="xs" dense color="blue-1" text-color="blue-9">
+                {{ b.name }}
+              </q-chip>
+            </div>
+            <q-badge v-else color="grey-7" outline label="Global" />
+          </q-td>
+        </template>
+
         <template v-slot:body-cell-status="props">
           <q-td :props="props">
             <q-badge :color="props.row.password_changed ? 'positive' : 'warning'" rounded>
@@ -60,11 +91,52 @@
         <q-card-section>
           <q-form @submit="onSubmit" class="q-gutter-md">
             <div class="row q-col-gutter-sm">
-              <q-input v-model="form.name" label="Nombre" outlined rounded dense class="col-6" :rules="[val => !!val || 'Requerido']" />
-              <q-input v-model="form.surename" label="Apellido" outlined rounded dense class="col-6" :rules="[val => !!val || 'Requerido']" />
+              <q-input v-model="form.name" label="Nombre *" outlined rounded dense class="col-6" :rules="[val => !!val || 'Requerido']" />
+              <q-input v-model="form.surename" label="Apellido *" outlined rounded dense class="col-6" :rules="[val => !!val || 'Requerido']" />
             </div>
             
-            <q-input v-model="form.username" label="Nombre de Usuario (Login)" outlined rounded dense :rules="[val => !!val || 'Requerido']" />
+            <q-select
+              v-model="form.id_role"
+              :options="roleStore.roles"
+              option-value="id_role"
+              option-label="name"
+              emit-value
+              map-options
+              label="Rol del Miembro *"
+              outlined
+              rounded
+              dense
+              :rules="[val => !!val || 'El rol es obligatorio']"
+            >
+              <template v-slot:prepend>
+                <q-icon name="mdi-account-star" />
+              </template>
+            </q-select>
+
+            <q-input v-model="form.username" label="Nombre de Usuario (Login) *" outlined rounded dense :rules="[val => !!val || 'Requerido']" />
+            
+            <q-select
+              v-if="authStore.hasPermission('staff.view_all')"
+              v-model="form.branch_ids"
+              :options="branchStore.branches"
+              option-value="id_branch"
+              option-label="name"
+              emit-value
+              map-options
+              multiple
+              use-chips
+              label="Sucursales con Acceso"
+              outlined
+              rounded
+              dense
+              clearable
+              hint="Si no elegís ninguna, el acceso será global"
+            >
+              <template v-slot:prepend>
+                <q-icon name="mdi-store" />
+              </template>
+            </q-select>
+
             <q-input v-model="form.mail" label="Email (Opcional)" outlined rounded dense />
             <q-input v-model="form.phone" label="Teléfono" outlined rounded dense />
 
@@ -111,11 +183,17 @@
 </template>
 
 <script setup>
-import { ref, onMounted, reactive } from 'vue'
+import { ref, onMounted, reactive, computed } from 'vue'
 import { useEmployeeStore } from 'stores/employee'
+import { useAuthStore } from 'stores/auth'
+import { useBranchStore } from 'stores/branch'
+import { useRoleStore } from 'stores/role'
 import { copyToClipboard, Notify } from 'quasar'
 
 const employeeStore = useEmployeeStore()
+const authStore = useAuthStore()
+const branchStore = useBranchStore()
+const roleStore = useRoleStore()
 const showAddDialog = ref(false)
 const showCredentialsDialog = ref(false)
 const creating = ref(false)
@@ -125,6 +203,8 @@ const form = reactive({
   name: '',
   surename: '',
   username: '',
+  id_role: null,
+  branch_ids: [],
   mail: '',
   phone: ''
 })
@@ -132,14 +212,29 @@ const form = reactive({
 const columns = [
   { name: 'name', label: 'Nombre', field: row => `${row.name} ${row.surename}`, align: 'left', sortable: true },
   { name: 'username', label: 'Usuario', field: 'username', align: 'left' },
-  { name: 'role', label: 'Rol', field: 'role', align: 'center' },
+  { name: 'role_name', label: 'Rol', field: 'role_name', align: 'center' },
+  { name: 'branches', label: 'Sucursales', field: 'accessible_branches', align: 'center' },
   { name: 'status', label: 'Estado', field: 'password_changed', align: 'center' },
   { name: 'actions', label: '', field: 'id_employee', align: 'right' }
 ]
 
-onMounted(() => {
-  employeeStore.fetchEmployees()
+const viewAll = ref(false)
+
+onMounted(async () => {
+  if (authStore.hasPermission('staff.view_all')) {
+    await Promise.all([
+      branchStore.fetchBranches(),
+      roleStore.fetchRoles()
+    ])
+  } else {
+    await roleStore.fetchRoles()
+  }
+  employeeStore.fetchEmployees(viewAll.value)
 })
+
+function toggleViewAll(val) {
+  employeeStore.fetchEmployees(val)
+}
 
 async function onSubmit() {
   creating.value = true
@@ -157,6 +252,15 @@ async function onSubmit() {
     // Reset form
     Object.keys(form).forEach(key => form[key] = '')
   }
+}
+
+const isOwnerRegistered = computed(() => {
+  return employeeStore.employees.some(emp => emp.id_owner === authStore.user?.id_owner)
+})
+
+async function addOwnerAsStaff() {
+  if (!branchStore.currentBranch) return
+  await employeeStore.registerOwner(branchStore.currentBranch.id_branch)
 }
 
 function copyToClipboardAction(text) {

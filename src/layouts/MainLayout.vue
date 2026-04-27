@@ -12,32 +12,39 @@
       <div class="q-pa-sm">
         <div class="text-subtitle1 text-bold q-mb-md text-secondary">Navegación</div>
         <q-list padding class="rounded-borders">
-          <q-item clickable v-ripple @click="router.push('/dashboard/agenda')">
+          <q-item clickable v-ripple @click="router.push('/dashboard/agenda')" v-if="authStore.hasPermission('appointments.view')">
             <q-item-section avatar>
               <q-icon name="mdi-calendar" color="primary" />
             </q-item-section>
             <q-item-section>Agenda</q-item-section>
           </q-item>
 
-          <q-item clickable v-ripple @click="router.push('/dashboard/servicios')">
+          <q-item clickable v-ripple @click="router.push('/dashboard/servicios')" v-if="authStore.hasPermission('services.manage')">
             <q-item-section avatar>
               <q-icon name="mdi-hammer-wrench" color="primary" />
             </q-item-section>
             <q-item-section>Servicios</q-item-section>
           </q-item>
 
-          <q-item clickable v-ripple @click="router.push('/dashboard/equipo')">
+          <q-item clickable v-ripple @click="router.push('/dashboard/equipo')" v-if="authStore.hasPermission('staff.view')">
             <q-item-section avatar>
               <q-icon name="mdi-account-group" color="primary" />
             </q-item-section>
             <q-item-section>Equipo</q-item-section>
           </q-item>
 
-          <q-item clickable v-ripple @click="router.push('/dashboard/sucursales')">
+          <q-item clickable v-ripple @click="router.push('/dashboard/sucursales')" v-if="authStore.hasPermission('branches.manage')">
             <q-item-section avatar>
               <q-icon name="mdi-store" color="primary" />
             </q-item-section>
             <q-item-section>Sucursales</q-item-section>
+          </q-item>
+
+          <q-item clickable v-ripple @click="router.push('/dashboard/roles')" v-if="authStore.hasPermission('roles.manage')">
+            <q-item-section avatar>
+              <q-icon name="mdi-shield-account" color="primary" />
+            </q-item-section>
+            <q-item-section>Roles y Permisos</q-item-section>
           </q-item>
         </q-list>
 

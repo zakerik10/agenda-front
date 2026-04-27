@@ -52,6 +52,11 @@ const routes = [
         component: () => import('pages/BranchesManagement.vue'),
         meta: { requiresAuth: true },
       },
+      {
+        path: 'roles',
+        component: () => import('pages/RolesManagement.vue'),
+        meta: { requiresAuth: true },
+      },
     ],
   },
   {
